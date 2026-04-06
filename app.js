@@ -157,7 +157,6 @@ function updateTrackDropdown() {
 
     const album = albums[albumIndex];
 
-    // Update album art when album changes
     updateAlbumArt(album || null);
 
     if (albumIndex === "" || !album) {
@@ -175,7 +174,7 @@ function updateAlbumArt(album) {
     if (album && album.cover) {
         albumArt.src = URL.createObjectURL(album.cover);
     } else {
-        albumArt.src = ""; // solid dark placeholder from CSS
+        albumArt.src = ""; // solid dark placeholder
     }
 }
 
@@ -191,7 +190,7 @@ function addOption(select, value, text) {
 function playSelected() {
     const btn = document.getElementById("playButton");
 
-    // If a track is already loaded, toggle play/pause
+    // Toggle play/pause if a track is already loaded
     if (player.src) {
         if (player.paused) {
             player.play();
@@ -203,7 +202,7 @@ function playSelected() {
         return;
     }
 
-    // Otherwise load the selected track
+    // Load selected track
     const albumIndex = document.getElementById("albumDropdown").value;
     const trackIndex = document.getElementById("trackDropdown").value;
 
@@ -214,10 +213,6 @@ function playSelected() {
 
     const album = albums[albumIndex];
     const track = album.tracks[trackIndex];
-    if (!track.blob) {
-        alert("Track data missing.");
-        return;
-    }
 
     const url = URL.createObjectURL(track.blob);
     player.src = url;
@@ -226,7 +221,6 @@ function playSelected() {
     btn.textContent = "Pause";
     document.getElementById("nowPlaying").innerText = "Now Playing: " + track.name;
 
-    // Ensure album art matches current album
     updateAlbumArt(album);
 }
 
@@ -237,7 +231,6 @@ function playNextTrack() {
     const album = albums[albumIndex];
     if (!album) return false;
 
-    // No next track
     if (trackIndex >= album.tracks.length - 1) {
         return false;
     }
@@ -254,7 +247,6 @@ function playNextTrack() {
     document.getElementById("playButton").textContent = "Pause";
     document.getElementById("nowPlaying").innerText = "Now Playing: " + nextTrack.name;
 
-    // Keep album art consistent
     updateAlbumArt(album);
 
     return true;
@@ -266,12 +258,14 @@ function setupPlayerEvents() {
     player.addEventListener("ended", () => {
         const btn = document.getElementById("playButton");
 
-        // Try to advance to next track
         const didAdvance = playNextTrack();
 
-        // If no next track, fully reset the player
         if (!didAdvance) {
-            player.src = "";
+            // THE REAL FIX — hard reset audio element
+            player.pause();
+            player.removeAttribute("src");
+            player.load();
+
             btn.textContent = "Play";
             document.getElementById("nowPlaying").innerText = "Now Playing: (none)";
         }
@@ -303,7 +297,7 @@ function setupSliderEvents() {
     slider.addEventListener("touchend", finishDrag);
 }
 
-/* ---------- ZIP import + auto-save (with covers) ---------- */
+/* ---------- ZIP import + album covers ---------- */
 
 function setupDropzone() {
     const dropzone = document.getElementById("dropzone");
@@ -349,7 +343,7 @@ function setupDropzone() {
 
                 const lower = entry.name.toLowerCase();
 
-                // Detect album cover: AlbumName/cover.xxx
+                // Detect album cover
                 if (
                     lower.endsWith("cover.jpg") ||
                     lower.endsWith("cover.png") ||
