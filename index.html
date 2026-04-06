@@ -129,6 +129,30 @@
             cursor: pointer;
         }
 
+        /* ⭐ NEW: Album Art at Top of Track List */
+        #trackListHeader {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 14px;
+        }
+
+        #trackListAlbumArt {
+            width: 180px;
+            height: 180px;
+            border-radius: 12px;
+            object-fit: cover;
+            background: #0a0a12;
+            box-shadow: 0 0 18px rgba(178, 123, 255, 0.35);
+            margin-bottom: 10px;
+        }
+
+        #trackListAlbumName {
+            font-size: 18px;
+            color: #d8caff;
+            text-shadow: 0 0 6px rgba(178, 123, 255, 0.4);
+        }
+
         .trackItem {
             padding: 10px;
             margin-bottom: 6px;
@@ -143,7 +167,7 @@
             transform: scale(1.02);
         }
 
-        /* Album Art Box */
+        /* Album Art Box (Main Player) */
         #albumArtBox {
             width: 260px;
             height: 260px;
@@ -215,13 +239,19 @@
 <!-- Album Grid -->
 <div id="albumGrid"></div>
 
-<!-- Track List -->
+<!-- Track List (⭐ Updated with album art header) -->
 <div id="trackList" class="hidden">
     <button id="backToAlbums">← Back</button>
+
+    <div id="trackListHeader">
+        <img id="trackListAlbumArt" src="" alt="Album Art">
+        <div id="trackListAlbumName"></div>
+    </div>
+
     <div id="trackListInner"></div>
 </div>
 
-<!-- Album Art -->
+<!-- Main Player Album Art -->
 <div id="albumArtBox">
     <img id="albumArt" src="" alt="Album Art">
 </div>
