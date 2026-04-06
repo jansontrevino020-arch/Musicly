@@ -13,6 +13,7 @@ window.addEventListener("load", () => {
     setupSliderEvents();
     setupPlayerEvents();
     document.getElementById("playButton").onclick = playSelected;
+    document.getElementById("backToAlbums").onclick = backToAlbums;
     setupDropzone();
     initDB().then(loadLibraryFromDB);
 });
@@ -94,6 +95,7 @@ function loadLibraryFromDB() {
         metaReq.onsuccess = () => {
             const meta = metaReq.result;
             if (!meta) {
+                renderAlbumGrid();
                 updateAlbumDropdown();
                 resolve();
                 return;
@@ -120,6 +122,7 @@ function loadLibraryFromDB() {
                     };
                 }).filter(a => a.tracks.length > 0);
 
+                renderAlbumGrid();
                 updateAlbumDropdown();
                 resolve();
             };
@@ -129,7 +132,84 @@ function loadLibraryFromDB() {
     });
 }
 
-/* ---------- UI helpers ---------- */
+/* ---------- Album Grid UI ---------- */
+
+function renderAlbumGrid() {
+    const grid = document.getElementById("albumGrid");
+    grid.innerHTML = "";
+
+    albums.forEach((album, index) => {
+        const card = document.createElement("div");
+        card.className = "albumCard";
+
+        const img = document.createElement("img");
+        img.src = album.cover ? URL.createObjectURL(album.cover) : "";
+
+        const name = document.createElement("div");
+        name.className = "albumName";
+        name.textContent = album.name;
+
+        card.appendChild(img);
+        card.appendChild(name);
+
+        card.onclick = () => openTrackList(index);
+
+        grid.appendChild(card);
+    });
+}
+
+function openTrackList(albumIndex) {
+    const grid = document.getElementById("albumGrid");
+    const list = document.getElementById("trackList");
+    const inner = document.getElementById("trackListInner");
+
+    inner.innerHTML = "";
+    const album = albums[albumIndex];
+
+    album.tracks.forEach((track, i) => {
+        const item = document.createElement("div");
+        item.className = "trackItem";
+        item.textContent = track.name;
+
+        item.onclick = () => {
+            document.getElementById("albumDropdown").value = albumIndex;
+            document.getElementById("trackDropdown").value = i;
+            playSelected();
+        };
+
+        inner.appendChild(item);
+    });
+
+    // Fade transition
+    grid.classList.add("fade-out");
+    setTimeout(() => {
+        grid.classList.add("hidden");
+        grid.classList.remove("fade-out");
+
+        list.classList.remove("hidden");
+        list.classList.add("fade-in");
+
+        setTimeout(() => list.classList.remove("fade-in"), 250);
+    }, 250);
+}
+
+function backToAlbums() {
+    const grid = document.getElementById("albumGrid");
+    const list = document.getElementById("trackList");
+
+    list.classList.add("fade-out");
+    setTimeout(() => {
+        list.classList.add("hidden");
+        list.classList.remove("fade-out");
+
+        grid.classList.remove("hidden");
+        grid.classList.add("fade-in");
+
+        setTimeout(() => grid.classList.remove("fade-in"), 250);
+    }, 250);
+}
+
+/* ---------- Hidden dropdown logic ---------- */
 
 function updateAlbumDropdown() {
     const dropdown = document.getElementById("albumDropdown");
@@ -174,7 +254,7 @@ function updateAlbumArt(album) {
     if (album && album.cover) {
         albumArt.src = URL.createObjectURL(album.cover);
     } else {
-        albumArt.src = ""; // solid dark placeholder
+        albumArt.src = "";
     }
 }
 
@@ -185,12 +265,11 @@ function addOption(select, value, text) {
     select.appendChild(opt);
 }
 
-/* ---------- Playback (Play/Pause toggle) ---------- */
+/* ---------- Playback ---------- */
 
 function playSelected() {
     const btn = document.getElementById("playButton");
 
-    // Toggle play/pause if a track is already loaded
     if (player.src) {
         if (player.paused) {
             player.play();
@@ -202,7 +281,6 @@ function playSelected() {
         return;
     }
 
-    // Load selected track
     const albumIndex = document.getElementById("albumDropdown").value;
     const trackIndex = document.getElementById("trackDropdown").value;
 
@@ -261,7 +339,6 @@ function setupPlayerEvents() {
         const didAdvance = playNextTrack();
 
         if (!didAdvance) {
-            // THE REAL FIX — hard reset audio element
             player.pause();
             player.removeAttribute("src");
             player.load();
@@ -398,6 +475,7 @@ function setupDropzone() {
             await saveLibraryToDB(albums);
 
             status.textContent = "Vault saved for offline use.";
+            renderAlbumGrid();
             updateAlbumDropdown();
         } catch (err) {
             console.error(err);
