@@ -171,10 +171,19 @@ function openTrackList(albumIndex) {
         item.className = "trackItem";
         item.textContent = track.name;
 
+        // ⭐ INSTANT PLAY PATCH ⭐
         item.onclick = () => {
             document.getElementById("albumDropdown").value = albumIndex;
             document.getElementById("trackDropdown").value = i;
-            playSelected();
+
+            const url = URL.createObjectURL(track.blob);
+            player.src = url;
+            player.play();
+
+            document.getElementById("playButton").textContent = "Pause";
+            document.getElementById("nowPlaying").innerText = "Now Playing: " + track.name;
+
+            updateAlbumArt(album);
         };
 
         inner.appendChild(item);
