@@ -1,4 +1,5 @@
-const CACHE = "musicly-cache-v4";
+// Bump this every time you update app.js or index.html
+const CACHE = "musicly-cache-v6";
 
 const FILES = [
   "/Musicly/",
@@ -27,14 +28,16 @@ self.addEventListener("activate", event => {
 self.addEventListener("fetch", event => {
   event.respondWith(
     caches.match(event.request).then(response => {
-      return (
-        response ||
-        fetch(event.request).catch(() => {
-          if (event.request.mode === "navigate") {
-            return caches.match("/Musicly/index.html");
-          }
-        })
-      );
+      // Serve cached file if available
+      if (response) return response;
+
+      // Otherwise try network
+      return fetch(event.request).catch(() => {
+        // If offline and it's a navigation request, load index.html
+        if (event.request.mode === "navigate") {
+          return caches.match("/Musicly/index.html");
+        }
+      });
     })
   );
 });
