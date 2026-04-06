@@ -3,6 +3,9 @@ let sliderDragging = false;
 let player = null;
 let db = null;
 
+let currentAlbumIndex = null;
+let currentTrackIndex = null;
+
 const DB_NAME = "musicly-db";
 const DB_VERSION = 1;
 const TRACK_STORE = "tracks";
@@ -12,7 +15,7 @@ window.addEventListener("load", () => {
     player = document.getElementById("player");
     setupSliderEvents();
     setupPlayerEvents();
-    document.getElementById("playButton").onclick = playSelected;
+    document.getElementById("playButton").onclick = togglePlayPause;
     document.getElementById("backToAlbums").onclick = backToAlbums;
     setupDropzone();
     initDB().then(loadLibraryFromDB);
@@ -96,9 +99,7 @@ function loadLibraryFromDB() {
             const meta = metaReq.result;
             if (!meta) {
                 renderAlbumGrid();
-                updateAlbumDropdown();
-                resolve();
-                return;
+                return resolve();
             }
 
             const albumsMeta = meta.albums;
@@ -123,7 +124,6 @@ function loadLibraryFromDB() {
                 }).filter(a => a.tracks.length > 0);
 
                 renderAlbumGrid();
-                updateAlbumDropdown();
                 resolve();
             };
             tracksReq.onerror = e => reject(e.target.error);
@@ -171,19 +171,11 @@ function openTrackList(albumIndex) {
         item.className = "trackItem";
         item.textContent = track.name;
 
-        // ⭐ INSTANT PLAY PATCH ⭐
+        // ⭐ INSTANT SWITCH + PLAY ⭐
         item.onclick = () => {
-            document.getElementById("albumDropdown").value = albumIndex;
-            document.getElementById("trackDropdown").value = i;
-
-            const url = URL.createObjectURL(track.blob);
-            player.src = url;
-            player.play();
-
-            document.getElementById("playButton").textContent = "Pause";
-            document.getElementById("nowPlaying").innerText = "Now Playing: " + track.name;
-
-            updateAlbumArt(album);
+            currentAlbumIndex = albumIndex;
+            currentTrackIndex = i;
+            playTrack(albumIndex, i);
         };
 
         inner.appendChild(item);
@@ -218,86 +210,9 @@ function backToAlbums() {
     }, 250);
 }
 
-/* ---------- Hidden dropdown logic ---------- */
+/* ---------- Playback Core ---------- */
 
-function updateAlbumDropdown() {
-    const dropdown = document.getElementById("albumDropdown");
-    dropdown.innerHTML = "";
-
-    if (albums.length === 0) {
-        addOption(dropdown, "", "(no albums found)");
-        updateTrackDropdown();
-        updateAlbumArt(null);
-        return;
-    }
-
-    albums.forEach((album, i) => {
-        addOption(dropdown, i, album.name);
-    });
-
-    dropdown.onchange = updateTrackDropdown;
-    updateTrackDropdown();
-}
-
-function updateTrackDropdown() {
-    const albumIndex = document.getElementById("albumDropdown").value;
-    const trackDropdown = document.getElementById("trackDropdown");
-    trackDropdown.innerHTML = "";
-
-    const album = albums[albumIndex];
-
-    updateAlbumArt(album || null);
-
-    if (albumIndex === "" || !album) {
-        addOption(trackDropdown, "", "(no tracks)");
-        return;
-    }
-
-    album.tracks.forEach((track, i) => {
-        addOption(trackDropdown, i, track.name);
-    });
-}
-
-function updateAlbumArt(album) {
-    const albumArt = document.getElementById("albumArt");
-    if (album && album.cover) {
-        albumArt.src = URL.createObjectURL(album.cover);
-    } else {
-        albumArt.src = "";
-    }
-}
-
-function addOption(select, value, text) {
-    const opt = document.createElement("option");
-    opt.value = value;
-    opt.text = text;
-    select.appendChild(opt);
-}
-
-/* ---------- Playback ---------- */
-
-function playSelected() {
-    const btn = document.getElementById("playButton");
-
-    if (player.src) {
-        if (player.paused) {
-            player.play();
-            btn.textContent = "Pause";
-        } else {
-            player.pause();
-            btn.textContent = "Play";
-        }
-        return;
-    }
-
-    const albumIndex = document.getElementById("albumDropdown").value;
-    const trackIndex = document.getElementById("trackDropdown").value;
-
-    if (albumIndex === "" || trackIndex === "") {
-        alert("Select an album and a track.");
-        return;
-    }
-
+function playTrack(albumIndex, trackIndex) {
     const album = albums[albumIndex];
     const track = album.tracks[trackIndex];
 
@@ -305,46 +220,49 @@ function playSelected() {
     player.src = url;
     player.play();
 
-    btn.textContent = "Pause";
+    document.getElementById("playButton").textContent = "Pause";
     document.getElementById("nowPlaying").innerText = "Now Playing: " + track.name;
 
     updateAlbumArt(album);
 }
 
-function playNextTrack() {
-    const albumIndex = parseInt(document.getElementById("albumDropdown").value);
-    const trackIndex = parseInt(document.getElementById("trackDropdown").value);
+function togglePlayPause() {
+    if (!player.src) return;
 
-    const album = albums[albumIndex];
+    if (player.paused) {
+        player.play();
+    } else {
+        player.pause();
+    }
+}
+
+function playNextTrack() {
+    if (currentAlbumIndex === null || currentTrackIndex === null) return false;
+
+    const album = albums[currentAlbumIndex];
     if (!album) return false;
 
-    if (trackIndex >= album.tracks.length - 1) {
-        return false;
-    }
+    if (currentTrackIndex >= album.tracks.length - 1) return false;
 
-    const nextIndex = trackIndex + 1;
-    document.getElementById("trackDropdown").value = nextIndex;
-
-    const nextTrack = album.tracks[nextIndex];
-    const url = URL.createObjectURL(nextTrack.blob);
-
-    player.src = url;
-    player.play();
-
-    document.getElementById("playButton").textContent = "Pause";
-    document.getElementById("nowPlaying").innerText = "Now Playing: " + nextTrack.name;
-
-    updateAlbumArt(album);
-
+    currentTrackIndex++;
+    playTrack(currentAlbumIndex, currentTrackIndex);
     return true;
 }
 
 /* ---------- Audio + slider ---------- */
 
 function setupPlayerEvents() {
-    player.addEventListener("ended", () => {
-        const btn = document.getElementById("playButton");
+    const btn = document.getElementById("playButton");
 
+    player.addEventListener("play", () => {
+        btn.textContent = "Pause";
+    });
+
+    player.addEventListener("pause", () => {
+        btn.textContent = "Play";
+    });
+
+    player.addEventListener("ended", () => {
         const didAdvance = playNextTrack();
 
         if (!didAdvance) {
@@ -352,7 +270,7 @@ function setupPlayerEvents() {
             player.removeAttribute("src");
             player.load();
 
-            btn.textContent = "Play";
+            document.getElementById("progressSlider").value = 0;
             document.getElementById("nowPlaying").innerText = "Now Playing: (none)";
         }
     });
@@ -383,7 +301,18 @@ function setupSliderEvents() {
     slider.addEventListener("touchend", finishDrag);
 }
 
-/* ---------- ZIP import + album covers ---------- */
+/* ---------- Album Art ---------- */
+
+function updateAlbumArt(album) {
+    const albumArt = document.getElementById("albumArt");
+    if (album && album.cover) {
+        albumArt.src = URL.createObjectURL(album.cover);
+    } else {
+        albumArt.src = "";
+    }
+}
+
+/* ---------- ZIP Import ---------- */
 
 function setupDropzone() {
     const dropzone = document.getElementById("dropzone");
@@ -485,7 +414,6 @@ function setupDropzone() {
 
             status.textContent = "Vault saved for offline use.";
             renderAlbumGrid();
-            updateAlbumDropdown();
         } catch (err) {
             console.error(err);
             alert("Failed to import ZIP.");
