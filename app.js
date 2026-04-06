@@ -163,15 +163,22 @@ function openTrackList(albumIndex) {
     const list = document.getElementById("trackList");
     const inner = document.getElementById("trackListInner");
 
+    const headerArt = document.getElementById("trackListAlbumArt");
+    const headerName = document.getElementById("trackListAlbumName");
+
     inner.innerHTML = "";
     const album = albums[albumIndex];
+
+    // ⭐ Album art + name at top of track list
+    headerArt.src = album.cover ? URL.createObjectURL(album.cover) : "";
+    headerName.textContent = album.name;
 
     album.tracks.forEach((track, i) => {
         const item = document.createElement("div");
         item.className = "trackItem";
         item.textContent = track.name;
 
-        // ⭐ INSTANT SWITCH + PLAY ⭐
+        // ⭐ Instant play
         item.onclick = () => {
             currentAlbumIndex = albumIndex;
             currentTrackIndex = i;
