@@ -19,7 +19,6 @@
             padding: 0;
         }
 
-        /* Center everything */
         #container {
             min-height: 100vh;
             display: flex;
@@ -38,7 +37,6 @@
             text-shadow: 0 0 8px #8f5cff;
         }
 
-        /* Neon card dropzone */
         #dropzone {
             width: 100%;
             max-width: 360px;
@@ -61,6 +59,25 @@
             box-shadow: 0 0 18px rgba(178, 123, 255, 0.35);
         }
 
+        /* Album art box */
+        #albumArtBox {
+            width: 260px;
+            height: 260px;
+            border-radius: 14px;
+            overflow: hidden;
+            background: #0a0a12; /* solid dark placeholder */
+            box-shadow: 0 0 18px rgba(178, 123, 255, 0.25);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #albumArt {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
         select {
             background: #141421;
             color: #eee;
@@ -72,7 +89,6 @@
             box-shadow: 0 0 8px rgba(178, 123, 255, 0.15);
         }
 
-        /* Neon play/pause button */
         #playButton {
             background: #b27bff;
             border: none;
@@ -122,6 +138,10 @@
 </div>
 
 <div id="status"></div>
+
+<div id="albumArtBox">
+    <img id="albumArt" src="" alt="Album Art">
+</div>
 
 <select id="albumDropdown"></select>
 <select id="trackDropdown"></select>
