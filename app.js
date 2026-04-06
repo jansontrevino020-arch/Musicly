@@ -158,9 +158,24 @@ function addOption(select, value, text) {
     select.appendChild(opt);
 }
 
-/* ---------- Playback ---------- */
+/* ---------- Playback (Play/Pause toggle) ---------- */
 
 function playSelected() {
+    const btn = document.getElementById("playButton");
+
+    // If a track is already loaded, toggle play/pause
+    if (player.src) {
+        if (player.paused) {
+            player.play();
+            btn.textContent = "Pause";
+        } else {
+            player.pause();
+            btn.textContent = "Play";
+        }
+        return;
+    }
+
+    // Otherwise load the selected track
     const albumIndex = document.getElementById("albumDropdown").value;
     const trackIndex = document.getElementById("trackDropdown").value;
 
@@ -179,6 +194,7 @@ function playSelected() {
     player.src = url;
     player.play();
 
+    btn.textContent = "Pause";
     document.getElementById("nowPlaying").innerText = "Now Playing: " + track.name;
 }
 
@@ -190,6 +206,7 @@ function playNextTrack() {
 
     if (trackIndex >= album.tracks.length - 1) {
         document.getElementById("nowPlaying").innerText = "Album finished.";
+        document.getElementById("playButton").textContent = "Play";
         return;
     }
 
@@ -202,13 +219,17 @@ function playNextTrack() {
     player.src = url;
     player.play();
 
+    document.getElementById("playButton").textContent = "Pause";
     document.getElementById("nowPlaying").innerText = "Now Playing: " + nextTrack.name;
 }
 
 /* ---------- Audio + slider ---------- */
 
 function setupPlayerEvents() {
-    player.addEventListener("ended", playNextTrack);
+    player.addEventListener("ended", () => {
+        document.getElementById("playButton").textContent = "Play";
+        playNextTrack();
+    });
 
     player.addEventListener("timeupdate", () => {
         if (sliderDragging) return;
