@@ -4,6 +4,9 @@
     <title>Musicly</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
+    <!-- ⭐ ZIP extraction library -->
+    <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+
     <style>
         body {
             background: #050509;
@@ -44,13 +47,29 @@
             color: #aaa;
             margin-top: 10px;
         }
+
+        /* Drag & Drop Zone */
+        #dropzone {
+            width: 100%;
+            height: 160px;
+            border: 3px dashed #b27bff;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #b27bff;
+            font-size: 18px;
+            margin-top: 20px;
+            transition: 0.2s;
+        }
     </style>
 </head>
 <body>
 
 <h1>Musicly</h1>
 
-<button id="chooseFolderBtn">Choose MusicVault Folder</button>
+<!-- ZIP DROP ZONE -->
+<div id="dropzone">Drop Your MusicVault.zip Here</div>
 
 <br><br>
 
@@ -71,7 +90,6 @@
 <audio id="player"></audio>
 
 <script>
-let musicVaultHandle = null;
 let albums = [];
 let sliderDragging = false;
 let player = null;
@@ -82,85 +100,11 @@ window.onload = async function () {
     setupSliderEvents();
     setupPlayerEvents();
 
-    document.getElementById("chooseFolderBtn").onclick = chooseFolder;
     document.getElementById("playButton").onclick = playSelected;
-
-    // Try to restore folder access
-    await restoreFolder();
 };
 
 /* ------------------------------
-   RESTORE FOLDER PERMISSION
------------------------------- */
-async function restoreFolder() {
-    const saved = localStorage.getItem("musicVaultHandle");
-    if (!saved) return;
-
-    try {
-        musicVaultHandle = await window.showDirectoryPicker({
-            id: "MusicVault",
-            mode: "read"
-        });
-        await loadAlbums();
-    } catch (e) {
-        console.log("Folder restore failed:", e);
-    }
-}
-
-/* ------------------------------
-   CHOOSE FOLDER
------------------------------- */
-async function chooseFolder() {
-    try {
-        musicVaultHandle = await window.showDirectoryPicker();
-        localStorage.setItem("musicVaultHandle", "true");
-        await loadAlbums();
-    } catch (e) {
-        alert("Folder access cancelled.");
-    }
-}
-
-/* ------------------------------
-   LOAD ALBUMS (SUBFOLDERS)
------------------------------- */
-async function loadAlbums() {
-    albums = [];
-
-    for await (const entry of musicVaultHandle.values()) {
-        if (entry.kind === "directory") {
-            const album = {
-                name: entry.name,
-                tracks: []
-            };
-
-            for await (const fileEntry of entry.values()) {
-                if (fileEntry.kind === "file") {
-                    const file = await fileEntry.getFile();
-                    const lower = file.name.toLowerCase();
-
-                    if (lower.endsWith(".mp3") || lower.endsWith(".wav") ||
-                        lower.endsWith(".ogg") || lower.endsWith(".flac") ||
-                        lower.endsWith(".m4a")) {
-
-                        album.tracks.push({
-                            name: file.name,
-                            file: file
-                        });
-                    }
-                }
-            }
-
-            if (album.tracks.length > 0) {
-                albums.push(album);
-            }
-        }
-    }
-
-    updateAlbumDropdown();
-}
-
-/* ------------------------------
-   DROPDOWNS
+   LOAD ALBUMS INTO DROPDOWNS
 ------------------------------ */
 function updateAlbumDropdown() {
     const dropdown = document.getElementById("albumDropdown");
@@ -277,6 +221,70 @@ function setupSliderEvents() {
     slider.addEventListener("mouseup", finishDrag);
     slider.addEventListener("touchend", finishDrag);
 }
+
+/* ------------------------------
+   ⭐ ZIP IMPORT (iPhone safe)
+------------------------------ */
+const dropzone = document.getElementById("dropzone");
+
+dropzone.addEventListener("dragover", e => {
+    e.preventDefault();
+    dropzone.style.background = "rgba(178, 123, 255, 0.1)";
+});
+
+dropzone.addEventListener("dragleave", () => {
+    dropzone.style.background = "";
+});
+
+dropzone.addEventListener("drop", async e => {
+    e.preventDefault();
+    dropzone.style.background = "";
+
+    const file = e.dataTransfer.files[0];
+    if (!file || !file.name.toLowerCase().endsWith(".zip")) {
+        alert("Please drop a .zip file containing your MusicVault.");
+        return;
+    }
+
+    const zip = await JSZip.loadAsync(file);
+    albums = [];
+
+    const albumMap = {};
+
+    for (const path in zip.files) {
+        const entry = zip.files[path];
+
+        if (entry.dir) continue;
+
+        const lower = entry.name.toLowerCase();
+        if (
+            lower.endsWith(".mp3") ||
+            lower.endsWith(".wav") ||
+            lower.endsWith(".ogg") ||
+            lower.endsWith(".flac") ||
+            lower.endsWith(".m4a")
+        ) {
+            const parts = entry.name.split("/");
+            const albumName = parts.length > 1 ? parts[parts.length - 2] : "Unknown Album";
+
+            if (!albumMap[albumName]) albumMap[albumName] = [];
+
+            const fileData = await entry.async("blob");
+
+            albumMap[albumName].push({
+                name: parts[parts.length - 1],
+                file: new File([fileData], parts[parts.length - 1])
+            });
+        }
+    }
+
+    albums = Object.keys(albumMap).map(name => ({
+        name: name,
+        tracks: albumMap[name]
+    }));
+
+    updateAlbumDropdown();
+});
 </script>
 
 </body>
