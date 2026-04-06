@@ -1,0 +1,8 @@
+{
+  "name": "Musicly",
+  "short_name": "Musicly",
+  "start_url": "/Musicly/",
+  "display": "standalone",
+  "background_color": "#050509",
+  "theme_color": "#050509"
+}
