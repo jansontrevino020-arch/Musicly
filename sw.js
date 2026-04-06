@@ -1,4 +1,4 @@
-const CACHE = "musicly-cache-v7";
+const CACHE = "musicly-cache-v8";
 
 const FILES = [
   "/Musicly/",
@@ -27,7 +27,7 @@ self.addEventListener("fetch", event => {
 
       return fetch(event.request).catch(() => {
         if (event.request.mode === "navigate") {
-          return caches.match("/Musicly/index.html");
+            return caches.match("/Musicly/index.html");
         }
       });
     })
