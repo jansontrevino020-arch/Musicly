@@ -52,6 +52,7 @@ function saveLibraryToDB(albums) {
             key: "albums",
             albums: albums.map(album => ({
                 name: album.name,
+                coverId: album.coverId || null,
                 tracks: album.tracks.map(t => ({
                     id: t.id,
                     name: t.name
@@ -62,6 +63,13 @@ function saveLibraryToDB(albums) {
         metaStore.put(meta);
 
         albums.forEach(album => {
+            if (album.cover) {
+                trackStore.put({
+                    id: album.coverId,
+                    name: album.name + " (cover)",
+                    blob: album.cover
+                });
+            }
             album.tracks.forEach(track => {
                 trackStore.put({
                     id: track.id,
@@ -98,14 +106,19 @@ function loadLibraryFromDB() {
                 const trackMap = {};
                 allTracks.forEach(t => trackMap[t.id] = t);
 
-                albums = albumsMeta.map(a => ({
-                    name: a.name,
-                    tracks: a.tracks.map(t => ({
-                        id: t.id,
-                        name: t.name,
-                        blob: trackMap[t.id]?.blob || null
-                    })).filter(t => t.blob)
-                })).filter(a => a.tracks.length > 0);
+                albums = albumsMeta.map(a => {
+                    const coverBlob = a.coverId ? trackMap[a.coverId]?.blob || null : null;
+                    return {
+                        name: a.name,
+                        cover: coverBlob,
+                        coverId: a.coverId || null,
+                        tracks: a.tracks.map(t => ({
+                            id: t.id,
+                            name: t.name,
+                            blob: trackMap[t.id]?.blob || null
+                        })).filter(t => t.blob)
+                    };
+                }).filter(a => a.tracks.length > 0);
 
                 updateAlbumDropdown();
                 resolve();
@@ -125,6 +138,7 @@ function updateAlbumDropdown() {
     if (albums.length === 0) {
         addOption(dropdown, "", "(no albums found)");
         updateTrackDropdown();
+        updateAlbumArt(null);
         return;
     }
 
@@ -141,14 +155,28 @@ function updateTrackDropdown() {
     const trackDropdown = document.getElementById("trackDropdown");
     trackDropdown.innerHTML = "";
 
-    if (albumIndex === "") {
+    const album = albums[albumIndex];
+
+    // Update album art when album changes
+    updateAlbumArt(album || null);
+
+    if (albumIndex === "" || !album) {
         addOption(trackDropdown, "", "(no tracks)");
         return;
     }
 
-    albums[albumIndex].tracks.forEach((track, i) => {
+    album.tracks.forEach((track, i) => {
         addOption(trackDropdown, i, track.name);
     });
+}
+
+function updateAlbumArt(album) {
+    const albumArt = document.getElementById("albumArt");
+    if (album && album.cover) {
+        albumArt.src = URL.createObjectURL(album.cover);
+    } else {
+        albumArt.src = ""; // solid dark placeholder from CSS
+    }
 }
 
 function addOption(select, value, text) {
@@ -184,7 +212,8 @@ function playSelected() {
         return;
     }
 
-    const track = albums[albumIndex].tracks[trackIndex];
+    const album = albums[albumIndex];
+    const track = album.tracks[trackIndex];
     if (!track.blob) {
         alert("Track data missing.");
         return;
@@ -196,6 +225,9 @@ function playSelected() {
 
     btn.textContent = "Pause";
     document.getElementById("nowPlaying").innerText = "Now Playing: " + track.name;
+
+    // Ensure album art matches current album
+    updateAlbumArt(album);
 }
 
 function playNextTrack() {
@@ -203,11 +235,11 @@ function playNextTrack() {
     const trackIndex = parseInt(document.getElementById("trackDropdown").value);
 
     const album = albums[albumIndex];
+    if (!album) return false;
 
+    // No next track
     if (trackIndex >= album.tracks.length - 1) {
-        document.getElementById("nowPlaying").innerText = "Album finished.";
-        document.getElementById("playButton").textContent = "Play";
-        return;
+        return false;
     }
 
     const nextIndex = trackIndex + 1;
@@ -221,14 +253,28 @@ function playNextTrack() {
 
     document.getElementById("playButton").textContent = "Pause";
     document.getElementById("nowPlaying").innerText = "Now Playing: " + nextTrack.name;
+
+    // Keep album art consistent
+    updateAlbumArt(album);
+
+    return true;
 }
 
 /* ---------- Audio + slider ---------- */
 
 function setupPlayerEvents() {
     player.addEventListener("ended", () => {
-        document.getElementById("playButton").textContent = "Play";
-        playNextTrack();
+        const btn = document.getElementById("playButton");
+
+        // Try to advance to next track
+        const didAdvance = playNextTrack();
+
+        // If no next track, fully reset the player
+        if (!didAdvance) {
+            player.src = "";
+            btn.textContent = "Play";
+            document.getElementById("nowPlaying").innerText = "Now Playing: (none)";
+        }
     });
 
     player.addEventListener("timeupdate", () => {
@@ -257,7 +303,7 @@ function setupSliderEvents() {
     slider.addEventListener("touchend", finishDrag);
 }
 
-/* ---------- ZIP import + auto-save ---------- */
+/* ---------- ZIP import + auto-save (with covers) ---------- */
 
 function setupDropzone() {
     const dropzone = document.getElementById("dropzone");
@@ -265,16 +311,16 @@ function setupDropzone() {
 
     dropzone.addEventListener("dragover", e => {
         e.preventDefault();
-        dropzone.style.background = "rgba(178, 123, 255, 0.1)";
+        dropzone.style.background = "rgba(178, 123, 255, 0.12)";
     });
 
     dropzone.addEventListener("dragleave", () => {
-        dropzone.style.background = "";
+        dropzone.style.background = "rgba(178, 123, 255, 0.05)";
     });
 
     dropzone.addEventListener("drop", async e => {
         e.preventDefault();
-        dropzone.style.background = "";
+        dropzone.style.background = "rgba(178, 123, 255, 0.05)";
         status.textContent = "";
 
         if (!navigator.onLine) {
@@ -294,6 +340,7 @@ function setupDropzone() {
 
             const albumMap = {};
             let trackIdCounter = 0;
+            let coverIdCounter = 0;
 
             const entries = Object.keys(zip.files);
             for (const path of entries) {
@@ -301,6 +348,29 @@ function setupDropzone() {
                 if (entry.dir) continue;
 
                 const lower = entry.name.toLowerCase();
+
+                // Detect album cover: AlbumName/cover.xxx
+                if (
+                    lower.endsWith("cover.jpg") ||
+                    lower.endsWith("cover.png") ||
+                    lower.endsWith("cover.jpeg") ||
+                    lower.endsWith("cover.webp")
+                ) {
+                    const parts = entry.name.split("/");
+                    const albumName = parts.length > 1 ? parts[parts.length - 2] : "Unknown Album";
+
+                    const fileData = await entry.async("blob");
+
+                    if (!albumMap[albumName]) albumMap[albumName] = { tracks: [] };
+                    const coverId = "cover-" + (coverIdCounter++);
+
+                    albumMap[albumName].cover = fileData;
+                    albumMap[albumName].coverId = coverId;
+
+                    continue;
+                }
+
+                // Audio files
                 if (
                     lower.endsWith(".mp3") ||
                     lower.endsWith(".wav") ||
@@ -312,11 +382,11 @@ function setupDropzone() {
                     const albumName = parts.length > 1 ? parts[parts.length - 2] : "Unknown Album";
                     const trackName = parts[parts.length - 1];
 
-                    if (!albumMap[albumName]) albumMap[albumName] = [];
+                    if (!albumMap[albumName]) albumMap[albumName] = { tracks: [] };
 
                     const fileData = await entry.async("blob");
 
-                    albumMap[albumName].push({
+                    albumMap[albumName].tracks.push({
                         id: "track-" + (trackIdCounter++),
                         name: trackName,
                         blob: fileData
@@ -326,7 +396,9 @@ function setupDropzone() {
 
             albums = Object.keys(albumMap).map(name => ({
                 name: name,
-                tracks: albumMap[name]
+                cover: albumMap[name].cover || null,
+                coverId: albumMap[name].coverId || null,
+                tracks: albumMap[name].tracks
             }));
 
             await saveLibraryToDB(albums);
