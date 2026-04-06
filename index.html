@@ -5,10 +5,7 @@
     <title>Musicly</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
-    <!-- PWA manifest -->
     <link rel="manifest" href="manifest.webmanifest">
-
-    <!-- iOS PWA meta (no icons needed) -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black">
     <meta name="apple-mobile-web-app-title" content="Musicly">
@@ -31,66 +28,83 @@
             align-items: center;
             text-align: center;
             padding: 16px;
+            gap: 20px;
         }
 
         h1 {
-            color: #b27bff;
-            margin-bottom: 20px;
+            color: #c9a6ff;
+            font-size: 32px;
+            letter-spacing: 1px;
+            text-shadow: 0 0 8px #8f5cff;
+        }
+
+        /* Neon card dropzone */
+        #dropzone {
+            width: 100%;
+            max-width: 360px;
+            height: 160px;
+            border: 2px dashed #b27bff;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #d5b7ff;
+            font-size: 17px;
+            padding: 10px;
+            background: rgba(178, 123, 255, 0.05);
+            box-shadow: 0 0 12px rgba(178, 123, 255, 0.25);
+            transition: 0.2s;
+        }
+
+        #dropzone:hover {
+            background: rgba(178, 123, 255, 0.12);
+            box-shadow: 0 0 18px rgba(178, 123, 255, 0.35);
         }
 
         select {
             background: #141421;
             color: #eee;
             border: 1px solid #2a2a3a;
-            padding: 6px;
-            border-radius: 6px;
-            margin: 6px 0 12px 0;
+            padding: 8px;
+            border-radius: 8px;
             width: 260px;
+            font-size: 15px;
+            box-shadow: 0 0 8px rgba(178, 123, 255, 0.15);
         }
 
-        button {
+        /* Neon play/pause button */
+        #playButton {
             background: #b27bff;
             border: none;
-            padding: 8px 14px;
+            padding: 12px 26px;
             color: white;
-            border-radius: 6px;
+            border-radius: 30px;
             cursor: pointer;
-            margin-top: 10px;
-            font-size: 15px;
+            font-size: 17px;
+            font-weight: bold;
+            letter-spacing: 0.5px;
+            box-shadow: 0 0 12px rgba(178, 123, 255, 0.4);
+            transition: 0.2s;
         }
 
-        button:hover {
+        #playButton:hover {
             background: #c89dff;
+            box-shadow: 0 0 18px rgba(200, 157, 255, 0.55);
         }
 
         #progressSlider {
             width: 260px;
+            accent-color: #b27bff;
         }
 
         #nowPlaying {
-            font-size: 13px;
-            color: #aaa;
-            margin-top: 10px;
-        }
-
-        #dropzone {
-            width: 100%;
-            max-width: 350px;
-            height: 160px;
-            border: 3px dashed #b27bff;
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #b27bff;
-            font-size: 18px;
-            margin-top: 20px;
-            transition: 0.2s;
-            padding: 10px;
+            font-size: 14px;
+            color: #bfa8ff;
+            margin-top: 6px;
+            text-shadow: 0 0 6px rgba(178, 123, 255, 0.4);
         }
 
         #status {
-            margin-top: 10px;
             font-size: 13px;
             color: #8dd48d;
         }
@@ -103,24 +117,16 @@
 <h1>Musicly</h1>
 
 <div id="dropzone">
-    Drop MusicVault.zip here (online)<br>
-    It will be saved for offline use automatically.
+    Drop MusicVault.zip here<br>
+    (online import → offline forever)
 </div>
 
 <div id="status"></div>
 
-<br>
+<select id="albumDropdown"></select>
+<select id="trackDropdown"></select>
 
-<label>Album:</label><br>
-<select id="albumDropdown"></select><br>
-
-<label>Track:</label><br>
-<select id="trackDropdown"></select><br>
-
-<!-- Play/Pause toggle button -->
 <button id="playButton">Play</button>
-
-<br><br>
 
 <input type="range" id="progressSlider" min="0" max="100" value="0">
 
@@ -130,13 +136,9 @@
 
 </div>
 
-<!-- Local JSZip -->
 <script src="jszip.min.js"></script>
-
-<!-- Main app logic -->
 <script src="app.js"></script>
 
-<!-- Service worker registration -->
 <script>
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
