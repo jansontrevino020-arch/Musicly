@@ -1,16 +1,17 @@
-const CACHE = "musicly-cache-v9";
+const CACHE = "musicly-cache-v10";
 
 const FILES = [
-  "/Musicly",
   "/Musicly/",
   "/Musicly/index.html",
   "/Musicly/app.js",
   "/Musicly/jszip.min.js",
   "/Musicly/manifest.webmanifest",
   "/Musicly/icon-180.png",
+  "/Musicly/icon-192.png",
   "/Musicly/icon-512.png"
 ];
 
+// Install
 self.addEventListener("install", event => {
   event.waitUntil(
     caches.open(CACHE).then(cache => cache.addAll(FILES))
@@ -18,6 +19,7 @@ self.addEventListener("install", event => {
   self.skipWaiting();
 });
 
+// Activate
 self.addEventListener("activate", event => {
   event.waitUntil(
     caches.keys().then(keys =>
@@ -27,14 +29,21 @@ self.addEventListener("activate", event => {
   self.clients.claim();
 });
 
+// Fetch
 self.addEventListener("fetch", event => {
   event.respondWith(
-    caches.match(event.request, { ignoreSearch: true }).then(response => {
-      if (response) return response;
+    caches.match(event.request).then(cached => {
 
-      return fetch(event.request).catch(() => {
-        return caches.match("/Musicly/index.html");
-      });
+      const fetchPromise = fetch(event.request)
+        .then(networkResponse => {
+          return caches.open(CACHE).then(cache => {
+            cache.put(event.request, networkResponse.clone());
+            return networkResponse;
+          });
+        })
+        .catch(() => caches.match("/Musicly/index.html"));
+
+      return cached || fetchPromise;
     })
   );
 });
