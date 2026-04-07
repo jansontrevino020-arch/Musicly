@@ -10,6 +10,9 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black">
     <meta name="apple-mobile-web-app-title" content="Musicly">
 
+    <!-- ⭐ Apple Touch Icon -->
+    <link rel="apple-touch-icon" href="icon-180.png">
+
     <style>
         body {
             background: #050509;
@@ -59,7 +62,6 @@
             box-shadow: 0 0 18px rgba(178, 123, 255, 0.35);
         }
 
-        /* Fade animations */
         .fade-out {
             opacity: 0;
             transition: opacity 0.25s ease;
@@ -129,7 +131,7 @@
             cursor: pointer;
         }
 
-        /* ⭐ NEW: Album Art at Top of Track List */
+        /* ⭐ Album Art at Top of Track List */
         #trackListHeader {
             display: flex;
             flex-direction: column;
@@ -167,7 +169,7 @@
             transform: scale(1.02);
         }
 
-        /* Album Art Box (Main Player) */
+        /* Main Player Album Art */
         #albumArtBox {
             width: 260px;
             height: 260px;
@@ -217,7 +219,6 @@
             color: #8dd48d;
         }
 
-        /* Hidden dropdowns (logic only) */
         #albumDropdown, #trackDropdown {
             display: none;
         }
@@ -239,7 +240,7 @@
 <!-- Album Grid -->
 <div id="albumGrid"></div>
 
-<!-- Track List (⭐ Updated with album art header) -->
+<!-- ⭐ Track List with Album Art Header -->
 <div id="trackList" class="hidden">
     <button id="backToAlbums">← Back</button>
 
@@ -256,7 +257,6 @@
     <img id="albumArt" src="" alt="Album Art">
 </div>
 
-<!-- Hidden dropdowns for logic -->
 <select id="albumDropdown"></select>
 <select id="trackDropdown"></select>
 
