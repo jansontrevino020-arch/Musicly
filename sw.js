@@ -11,7 +11,6 @@ const FILES = [
   "/Musicly/icon-512.png"
 ];
 
-// Install
 self.addEventListener("install", event => {
   event.waitUntil(
     caches.open(CACHE).then(cache => cache.addAll(FILES))
@@ -19,7 +18,6 @@ self.addEventListener("install", event => {
   self.skipWaiting();
 });
 
-// Activate
 self.addEventListener("activate", event => {
   event.waitUntil(
     caches.keys().then(keys =>
@@ -29,7 +27,6 @@ self.addEventListener("activate", event => {
   self.clients.claim();
 });
 
-// Fetch
 self.addEventListener("fetch", event => {
   event.respondWith(
     caches.match(event.request).then(cached => {
