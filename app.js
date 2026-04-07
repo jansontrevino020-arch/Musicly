@@ -21,7 +21,7 @@ window.addEventListener("load", () => {
     initDB().then(loadLibraryFromDB);
 });
 
-/* ---------- IndexedDB setup ---------- */
+/* ---------- IndexedDB ---------- */
 
 function initDB() {
     return new Promise((resolve, reject) => {
@@ -52,7 +52,7 @@ function saveLibraryToDB(albums) {
         trackStore.clear();
         metaStore.clear();
 
-        const meta = {
+        metaStore.put({
             key: "albums",
             albums: albums.map(album => ({
                 name: album.name,
@@ -62,9 +62,7 @@ function saveLibraryToDB(albums) {
                     name: t.name
                 }))
             }))
-        };
-
-        metaStore.put(meta);
+        });
 
         albums.forEach(album => {
             if (album.cover) {
@@ -74,6 +72,7 @@ function saveLibraryToDB(albums) {
                     blob: album.cover
                 });
             }
+
             album.tracks.forEach(track => {
                 trackStore.put({
                     id: track.id,
@@ -83,7 +82,7 @@ function saveLibraryToDB(albums) {
             });
         });
 
-        tx.oncomplete = () => resolve();
+        tx.oncomplete = resolve;
         tx.onerror = e => reject(e.target.error);
     });
 }
@@ -95,50 +94,48 @@ function loadLibraryFromDB() {
         const metaStore = tx.objectStore(META_STORE);
 
         const metaReq = metaStore.get("albums");
+
         metaReq.onsuccess = () => {
             const meta = metaReq.result;
+
             if (!meta) {
                 renderAlbumGrid();
                 return resolve();
             }
 
-            const albumsMeta = meta.albums;
             const tracksReq = trackStore.getAll();
-            tracksReq.onsuccess = () => {
-                const allTracks = tracksReq.result;
-                const trackMap = {};
-                allTracks.forEach(t => trackMap[t.id] = t);
 
-                albums = albumsMeta.map(a => {
-                    const coverBlob = a.coverId ? trackMap[a.coverId]?.blob || null : null;
-                    return {
-                        name: a.name,
-                        cover: coverBlob,
-                        coverId: a.coverId || null,
-                        tracks: a.tracks.map(t => ({
-                            id: t.id,
-                            name: t.name,
-                            blob: trackMap[t.id]?.blob || null
-                        })).filter(t => t.blob)
-                    };
-                }).filter(a => a.tracks.length > 0);
+            tracksReq.onsuccess = () => {
+                const trackMap = {};
+                tracksReq.result.forEach(t => trackMap[t.id] = t);
+
+                albums = meta.albums.map(a => ({
+                    name: a.name,
+                    cover: a.coverId ? trackMap[a.coverId]?.blob : null,
+                    coverId: a.coverId,
+                    tracks: a.tracks.map(t => ({
+                        id: t.id,
+                        name: t.name,
+                        blob: trackMap[t.id]?.blob
+                    })).filter(t => t.blob)
+                }));
 
                 renderAlbumGrid();
                 resolve();
             };
-            tracksReq.onerror = e => reject(e.target.error);
         };
+
         metaReq.onerror = e => reject(e.target.error);
     });
 }
 
-/* ---------- Album Grid UI ---------- */
+/* ---------- UI ---------- */
 
 function renderAlbumGrid() {
     const grid = document.getElementById("albumGrid");
     grid.innerHTML = "";
 
-    albums.forEach((album, index) => {
+    albums.forEach((album, i) => {
         const card = document.createElement("div");
         card.className = "albumCard";
 
@@ -151,34 +148,28 @@ function renderAlbumGrid() {
 
         card.appendChild(img);
         card.appendChild(name);
-
-        card.onclick = () => openTrackList(index);
+        card.onclick = () => openTrackList(i);
 
         grid.appendChild(card);
     });
 }
 
 function openTrackList(albumIndex) {
-    const grid = document.getElementById("albumGrid");
-    const list = document.getElementById("trackList");
+    const album = albums[albumIndex];
     const inner = document.getElementById("trackListInner");
 
-    const headerArt = document.getElementById("trackListAlbumArt");
-    const headerName = document.getElementById("trackListAlbumName");
-
     inner.innerHTML = "";
-    const album = albums[albumIndex];
 
-    // ⭐ Album art + name at top of track list
-    headerArt.src = album.cover ? URL.createObjectURL(album.cover) : "";
-    headerName.textContent = album.name;
+    document.getElementById("trackListAlbumArt").src =
+        album.cover ? URL.createObjectURL(album.cover) : "";
+
+    document.getElementById("trackListAlbumName").textContent = album.name;
 
     album.tracks.forEach((track, i) => {
         const item = document.createElement("div");
         item.className = "trackItem";
         item.textContent = track.name;
 
-        // ⭐ Instant play
         item.onclick = () => {
             currentAlbumIndex = albumIndex;
             currentTrackIndex = i;
@@ -188,243 +179,131 @@ function openTrackList(albumIndex) {
         inner.appendChild(item);
     });
 
-    // Fade transition
-    grid.classList.add("fade-out");
-    setTimeout(() => {
-        grid.classList.add("hidden");
-        grid.classList.remove("fade-out");
-
-        list.classList.remove("hidden");
-        list.classList.add("fade-in");
-
-        setTimeout(() => list.classList.remove("fade-in"), 250);
-    }, 250);
+    document.getElementById("albumGrid").classList.add("hidden");
+    document.getElementById("trackList").classList.remove("hidden");
 }
 
 function backToAlbums() {
-    const grid = document.getElementById("albumGrid");
-    const list = document.getElementById("trackList");
-
-    list.classList.add("fade-out");
-    setTimeout(() => {
-        list.classList.add("hidden");
-        list.classList.remove("fade-out");
-
-        grid.classList.remove("hidden");
-        grid.classList.add("fade-in");
-
-        setTimeout(() => grid.classList.remove("fade-in"), 250);
-    }, 250);
+    document.getElementById("trackList").classList.add("hidden");
+    document.getElementById("albumGrid").classList.remove("hidden");
 }
 
-/* ---------- Playback Core ---------- */
+/* ---------- Player ---------- */
 
 function playTrack(albumIndex, trackIndex) {
     const album = albums[albumIndex];
     const track = album.tracks[trackIndex];
 
+    if (player.src) {
+        URL.revokeObjectURL(player.src);
+    }
+
     const url = URL.createObjectURL(track.blob);
     player.src = url;
     player.play();
 
-    document.getElementById("playButton").textContent = "Pause";
     document.getElementById("nowPlaying").innerText = "Now Playing: " + track.name;
-
-    updateAlbumArt(album);
 }
 
 function togglePlayPause() {
     if (!player.src) return;
-
-    if (player.paused) {
-        player.play();
-    } else {
-        player.pause();
-    }
+    player.paused ? player.play() : player.pause();
 }
 
 function playNextTrack() {
-    if (currentAlbumIndex === null || currentTrackIndex === null) return false;
-
     const album = albums[currentAlbumIndex];
-    if (!album) return false;
-
-    if (currentTrackIndex >= album.tracks.length - 1) return false;
+    if (!album || currentTrackIndex >= album.tracks.length - 1) return false;
 
     currentTrackIndex++;
     playTrack(currentAlbumIndex, currentTrackIndex);
     return true;
 }
 
-/* ---------- Audio + slider ---------- */
+/* ---------- Events ---------- */
 
 function setupPlayerEvents() {
-    const btn = document.getElementById("playButton");
-
-    player.addEventListener("play", () => {
-        btn.textContent = "Pause";
-    });
-
-    player.addEventListener("pause", () => {
-        btn.textContent = "Play";
-    });
-
     player.addEventListener("ended", () => {
-        const didAdvance = playNextTrack();
-
-        if (!didAdvance) {
-            player.pause();
-            player.removeAttribute("src");
-            player.load();
-
-            document.getElementById("progressSlider").value = 0;
+        if (!playNextTrack()) {
+            player.src = "";
             document.getElementById("nowPlaying").innerText = "Now Playing: (none)";
         }
     });
 
     player.addEventListener("timeupdate", () => {
-        if (sliderDragging) return;
-        if (!player.duration) return;
+        if (sliderDragging || !player.duration) return;
 
-        const slider = document.getElementById("progressSlider");
-        slider.value = (player.currentTime / player.duration) * 100;
+        document.getElementById("progressSlider").value =
+            (player.currentTime / player.duration) * 100;
     });
 }
 
 function setupSliderEvents() {
     const slider = document.getElementById("progressSlider");
 
-    slider.addEventListener("mousedown", () => sliderDragging = true);
-    slider.addEventListener("touchstart", () => sliderDragging = true);
-
-    function finishDrag() {
+    slider.addEventListener("input", () => {
         if (!player.duration) return;
-        const newPos = (slider.value / 100) * player.duration;
-        player.currentTime = newPos;
-        sliderDragging = false;
-    }
 
-    slider.addEventListener("mouseup", finishDrag);
-    slider.addEventListener("touchend", finishDrag);
+        const newTime = (slider.value / 100) * player.duration;
+        player.currentTime = newTime;
+    });
 }
 
-/* ---------- Album Art ---------- */
-
-function updateAlbumArt(album) {
-    const albumArt = document.getElementById("albumArt");
-    if (album && album.cover) {
-        albumArt.src = URL.createObjectURL(album.cover);
-    } else {
-        albumArt.src = "";
-    }
-}
-
-/* ---------- ZIP Import ---------- */
+/* ---------- Dropzone ---------- */
 
 function setupDropzone() {
     const dropzone = document.getElementById("dropzone");
-    const status = document.getElementById("status");
 
-    dropzone.addEventListener("dragover", e => {
-        e.preventDefault();
-        dropzone.style.background = "rgba(178, 123, 255, 0.12)";
-    });
-
-    dropzone.addEventListener("dragleave", () => {
-        dropzone.style.background = "rgba(178, 123, 255, 0.05)";
-    });
+    dropzone.addEventListener("dragover", e => e.preventDefault());
 
     dropzone.addEventListener("drop", async e => {
         e.preventDefault();
-        dropzone.style.background = "rgba(178, 123, 255, 0.05)";
-        status.textContent = "";
-
-        if (!navigator.onLine) {
-            alert("Import must be done while online.");
-            return;
-        }
 
         const file = e.dataTransfer.files[0];
-        if (!file || !file.name.toLowerCase().endsWith(".zip")) {
-            alert("Please drop a .zip file containing your MusicVault.");
-            return;
-        }
+        if (!file || !file.name.endsWith(".zip")) return;
 
-        try {
-            status.textContent = "Loading ZIP...";
-            const zip = await JSZip.loadAsync(file);
+        const zip = await JSZip.loadAsync(file);
+        const albumMap = {};
+        let id = 0;
 
-            const albumMap = {};
-            let trackIdCounter = 0;
-            let coverIdCounter = 0;
+        for (const path in zip.files) {
+            const entry = zip.files[path];
+            if (entry.dir) continue;
 
-            const entries = Object.keys(zip.files);
-            for (const path of entries) {
-                const entry = zip.files[path];
-                if (entry.dir) continue;
+            if (path.endsWith(".mp3")) {
+                const parts = path.split("/");
+                const albumName = parts[parts.length - 2] || "Unknown";
 
-                const lower = entry.name.toLowerCase();
-
-                // Detect album cover
-                if (
-                    lower.endsWith("cover.jpg") ||
-                    lower.endsWith("cover.png") ||
-                    lower.endsWith("cover.jpeg") ||
-                    lower.endsWith("cover.webp")
-                ) {
-                    const parts = entry.name.split("/");
-                    const albumName = parts.length > 1 ? parts[parts.length - 2] : "Unknown Album";
-
-                    const fileData = await entry.async("blob");
-
-                    if (!albumMap[albumName]) albumMap[albumName] = { tracks: [] };
-                    const coverId = "cover-" + (coverIdCounter++);
-
-                    albumMap[albumName].cover = fileData;
-                    albumMap[albumName].coverId = coverId;
-
-                    continue;
+                if (!albumMap[albumName]) {
+                    albumMap[albumName] = { tracks: [] };
                 }
 
-                // Audio files
-                if (
-                    lower.endsWith(".mp3") ||
-                    lower.endsWith(".wav") ||
-                    lower.endsWith(".ogg") ||
-                    lower.endsWith(".flac") ||
-                    lower.endsWith(".m4a")
-                ) {
-                    const parts = entry.name.split("/");
-                    const albumName = parts.length > 1 ? parts[parts.length - 2] : "Unknown Album";
-                    const trackName = parts[parts.length - 1];
+                const blob = await entry.async("blob");
 
-                    if (!albumMap[albumName]) albumMap[albumName] = { tracks: [] };
-
-                    const fileData = await entry.async("blob");
-
-                    albumMap[albumName].tracks.push({
-                        id: "track-" + (trackIdCounter++),
-                        name: trackName,
-                        blob: fileData
-                    });
-                }
+                albumMap[albumName].tracks.push({
+                    id: "track-" + id++,
+                    name: parts.pop(),
+                    blob
+                });
             }
-
-            albums = Object.keys(albumMap).map(name => ({
-                name: name,
-                cover: albumMap[name].cover || null,
-                coverId: albumMap[name].coverId || null,
-                tracks: albumMap[name].tracks
-            }));
-
-            await saveLibraryToDB(albums);
-
-            status.textContent = "Vault saved for offline use.";
-            renderAlbumGrid();
-        } catch (err) {
-            console.error(err);
-            alert("Failed to import ZIP.");
-            status.textContent = "Import failed.";
         }
+
+        albums = Object.keys(albumMap).map(name => ({
+            name,
+            tracks: albumMap[name].tracks
+        }));
+
+        await saveLibraryToDB(albums);
+        renderAlbumGrid();
+    });
+}
+
+/* ---------- PWA ---------- */
+
+// Service Worker
+if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+        navigator.serviceWorker.register("/Musicly/sw.js")
+            .then(() => console.log("Service Worker Registered"))
+            .catch(err => console.log("SW error:", err));
     });
 }
