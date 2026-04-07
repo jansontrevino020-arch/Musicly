@@ -5,13 +5,16 @@
     <title>Musicly</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
-    <link rel="manifest" href="manifest.webmanifest">
+    <!-- PWA -->
+    <link rel="manifest" href="/Musicly/manifest.webmanifest">
+    <meta name="theme-color" content="#050509">
+    <meta name="description" content="A simple music streaming web app">
+
+    <!-- 🍎 iPhone -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black">
     <meta name="apple-mobile-web-app-title" content="Musicly">
-
-    <!-- Apple Touch Icon -->
-    <link rel="apple-touch-icon" href="icon-180.png">
+    <link rel="apple-touch-icon" href="/Musicly/icon-180.png">
 
     <style>
         body {
@@ -62,21 +65,10 @@
             box-shadow: 0 0 18px rgba(178, 123, 255, 0.35);
         }
 
-        .fade-out {
-            opacity: 0;
-            transition: opacity 0.25s ease;
-        }
+        .fade-out { opacity: 0; transition: opacity 0.25s ease; }
+        .fade-in { opacity: 1; transition: opacity 0.25s ease; }
+        .hidden { display: none; }
 
-        .fade-in {
-            opacity: 1;
-            transition: opacity 0.25s ease;
-        }
-
-        .hidden {
-            display: none;
-        }
-
-        /* Album Grid */
         #albumGrid {
             width: 100%;
             max-width: 360px;
@@ -115,7 +107,6 @@
             text-align: center;
         }
 
-        /* Track List */
         #trackList {
             width: 100%;
             max-width: 360px;
@@ -131,7 +122,6 @@
             cursor: pointer;
         }
 
-        /* Album Art at Top of Track List */
         #trackListHeader {
             display: flex;
             flex-direction: column;
@@ -152,7 +142,6 @@
         #trackListAlbumName {
             font-size: 18px;
             color: #d8caff;
-            text-shadow: 0 0 6px rgba(178, 123, 255, 0.4);
         }
 
         .trackItem {
@@ -161,25 +150,14 @@
             background: rgba(178, 123, 255, 0.08);
             border-radius: 8px;
             cursor: pointer;
-            transition: background 0.2s ease, transform 0.2s ease;
         }
 
-        .trackItem:hover {
-            background: rgba(178, 123, 255, 0.18);
-            transform: scale(1.02);
-        }
-
-        /* Main Player Album Art */
         #albumArtBox {
             width: 260px;
             height: 260px;
             border-radius: 14px;
             overflow: hidden;
             background: #0a0a12;
-            box-shadow: 0 0 18px rgba(178, 123, 255, 0.25);
-            display: flex;
-            align-items: center;
-            justify-content: center;
         }
 
         #albumArt {
@@ -195,11 +173,6 @@
             color: white;
             border-radius: 30px;
             cursor: pointer;
-            font-size: 17px;
-            font-weight: bold;
-            letter-spacing: 0.5px;
-            box-shadow: 0 0 12px rgba(178, 123, 255, 0.4);
-            transition: 0.2s;
         }
 
         #progressSlider {
@@ -210,8 +183,6 @@
         #nowPlaying {
             font-size: 14px;
             color: #bfa8ff;
-            margin-top: 6px;
-            text-shadow: 0 0 6px rgba(178, 123, 255, 0.4);
         }
 
         #status {
@@ -224,6 +195,7 @@
         }
     </style>
 </head>
+
 <body>
 
 <div id="container">
@@ -237,10 +209,8 @@
 
 <div id="status"></div>
 
-<!-- Album Grid -->
 <div id="albumGrid"></div>
 
-<!-- Track List -->
 <div id="trackList" class="hidden">
     <button id="backToAlbums">← Back</button>
 
@@ -252,7 +222,6 @@
     <div id="trackListInner"></div>
 </div>
 
-<!-- Main Player Album Art -->
 <div id="albumArtBox">
     <img id="albumArt" src="" alt="Album Art">
 </div>
@@ -270,13 +239,17 @@
 
 </div>
 
-<script src="jszip.min.js"></script>
-<script src="app.js"></script>
+<!-- Scripts -->
+<script src="/Musicly/jszip.min.js"></script>
+<script src="/Musicly/app.js"></script>
 
+<!-- Service Worker -->
 <script>
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-        navigator.serviceWorker.register('sw.js').catch(console.error);
+        navigator.serviceWorker.register('/Musicly/sw.js')
+            .then(() => console.log("Service Worker Registered"))
+            .catch(console.error);
     });
 }
 </script>
