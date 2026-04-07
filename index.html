@@ -17,19 +17,27 @@
     <link rel="apple-touch-icon" href="/Musicly/icon-180.png">
 
     <style>
-        /* KEEP YOUR EXISTING STYLES (unchanged) */
+        /* your styles stay here */
     </style>
 </head>
 
 <body>
 
 <div id="container">
-    <!-- KEEP YOUR EXISTING HTML UI (unchanged) -->
+    <!-- your UI stays here -->
 </div>
 
 <!-- Scripts -->
 <script src="/Musicly/jszip.min.js"></script>
 <script src="/Musicly/app.js"></script>
+
+<!-- Service Worker Registration -->
+<script>
+if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("/Musicly/sw.js")
+        .catch(err => console.error("SW registration failed:", err));
+}
+</script>
 
 </body>
 </html>
